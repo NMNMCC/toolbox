@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@zod/zod':
+        specifier: jsr:^4.1.12
+        version: '@jsr/zod__zod@4.1.12'
+
+packages:
+
+  '@jsr/zod__zod@4.1.12':
+    resolution: {integrity: sha512-irbHmNTOgKG6Zu2AO30OEYDhX4xRVtYmRDkB+/9je3FZ5Nckv4+tciez8EK+MHjw4Ed5j5bx2To5zzb4SX2T3w==, tarball: https://npm.jsr.io/~/11/@jsr/zod__zod/4.1.12.tgz}
+
+snapshots:
+
+  '@jsr/zod__zod@4.1.12': {}
