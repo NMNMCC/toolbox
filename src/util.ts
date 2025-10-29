@@ -31,15 +31,24 @@ export type FromPath<
 
 export const final = async <T extends AsyncGenerator<any, any, any>>(
 	generator: T,
-	...tracers: ((
-		value: Promise<T extends AsyncGenerator<infer Y, any, any> ? Y : never>,
-	) => Promise<void>)[]
+	...middlewares: (<
+		U extends Promise<
+			T extends AsyncGenerator<infer Y, any, any> ? Y : never
+		>,
+	>(
+		value: U,
+	) => Promise<U>)[]
 ): Promise<T extends AsyncGenerator<any, infer R, any> ? R : never> => {
-	while (true) {
-		const {value, done} = await generator.next()
-		await Promise.all(tracers.map(trace => trace(value)))
-		if (done) {
-			return value
-		}
+	let result = await generator.next()
+
+	while (!result.done) {
+		result = await generator.next(
+			await middlewares.reduce(
+				async (acc, middleware) => await middleware(await acc),
+				result.value,
+			),
+		)
 	}
+
+	return result.value
 }

@@ -27,7 +27,7 @@ export class Tool<Context = unknown, Input extends AnyObject = AnyObject>
 		Object.assign(this, x)
 	}
 
-	to_openai_function_tool(): OpenAI.ChatCompletionFunctionTool {
+	to_function_tool(): OpenAI.ChatCompletionFunctionTool {
 		return {
 			type: "function",
 			function: {

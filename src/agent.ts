@@ -1,7 +1,8 @@
 import OpenAI from "openai"
 import {z} from "zod"
 import {Tool} from "./tool.ts"
-import type {AnyObject, Pair, WithContext} from "./util.ts"
+import {final, type AnyObject} from "./util.ts"
+import {EventEmitter} from "events"
 
 export type AgentDefinition<Context = unknown> = {
 	name: string
@@ -10,12 +11,67 @@ export type AgentDefinition<Context = unknown> = {
 	tools?: Tool<Context, any>[]
 }
 
+export type AgentEvents<Context = unknown> = {
+	"agent.started": //
+	[ctx: Context]
+	"agent.reasoning.started": //
+	[
+		ctx: Context,
+		data: {params: OpenAI.ChatCompletionCreateParamsNonStreaming},
+	]
+	"agent.reasoning.completed": //
+	[ctx: Context, data: {message: OpenAI.ChatCompletionMessageParam}]
+	"agent.completed": //
+	[ctx: Context, data: {messages: OpenAI.ChatCompletionMessageParam[]}]
+	"agent.failed": //
+	[ctx: Context, data: {error: Error}]
+	"tool.started": //
+	[ctx: Context, data: {tool: Tool<Context>; id: string}]
+	"tool.completed": //
+	[ctx: Context, data: {tool: Tool<Context>; id: string; content: any}]
+	"tool.failed": //
+	[ctx: Context, data: {tool: Tool<Context>; id: string; error: Error}]
+}
+
 /**
  * Reason -> Act -> Observe
  */
 export class Agent<Context = unknown> implements Agent<Context> {
+	private emitter = new EventEmitter()
+
 	constructor(x: AgentDefinition<Context>) {
 		Object.assign(this, x)
+	}
+
+	on<K extends keyof AgentEvents<Context>>(
+		name: K,
+		listener: (...args: AgentEvents<Context>[K]) => void,
+	): this {
+		this.emitter.on(name, listener)
+		return this
+	}
+
+	off<K extends keyof AgentEvents<Context>>(
+		name: K,
+		listener: (...args: AgentEvents<Context>[K]) => void,
+	): this {
+		this.emitter.off(name, listener)
+		return this
+	}
+
+	once<K extends keyof AgentEvents<Context>>(
+		name: K,
+		listener: (...args: AgentEvents<Context>[K]) => void,
+	): this {
+		this.emitter.once(name, listener)
+		return this
+	}
+
+	emit<K extends keyof AgentEvents<Context>>(
+		name: K,
+		...args: AgentEvents<Context>[K]
+	): boolean {
+		return this.emitter.emit(name, ...args)
 	}
 
 	to_tool<
@@ -32,27 +88,29 @@ export class Agent<Context = unknown> implements Agent<Context> {
 			description: this.description,
 			input,
 			function: (_context, input) =>
-				this.run(ctx, {
-					...others,
-					response_format: {
-						type: "json_schema",
-						json_schema: {
-							name: this.name,
-							description: output.description ?? "",
-							schema: z.toJSONSchema(output),
-							strict: false,
+				final(
+					this.generate(ctx, {
+						...others,
+						response_format: {
+							type: "json_schema",
+							json_schema: {
+								name: this.name,
+								description: output.description ?? "",
+								schema: z.toJSONSchema(output),
+								strict: false,
+							},
 						},
-					},
-					messages: [
-						...messages,
-						{role: "user", content: JSON.stringify(_context)},
-						{role: "user", content: JSON.stringify(input)},
-					],
-				}),
+						messages: [
+							...messages,
+							{role: "user", content: JSON.stringify(_context)},
+							{role: "user", content: JSON.stringify(input)},
+						],
+					}),
+				),
 		})
 	}
 
-	async *run(
+	async *generate(
 		ctx: Context,
 		{
 			client: client = new OpenAI(),
@@ -60,14 +118,15 @@ export class Agent<Context = unknown> implements Agent<Context> {
 			...others
 		}: AgentRunOptions,
 	): AsyncGenerator<
-		AgentRunTrace<Context>,
-		Omit<AgentRunTraceAgentCompleted<Context>, "type">
+		OpenAI.ChatCompletionAssistantMessageParam,
+		{context: Context; messages: OpenAI.ChatCompletionMessageParam[]},
+		OpenAI.ChatCompletionAssistantMessageParam
 	> {
 		const messages: OpenAI.ChatCompletionMessageParam[] = [
 			{role: "system", content: this.system ?? ""},
 			...(_messages ? _messages : []),
 		]
-		yield {type: "agent.started", context: ctx}
+		this.emit("agent.started", ctx)
 
 		try {
 			while (true) {
@@ -75,38 +134,30 @@ export class Agent<Context = unknown> implements Agent<Context> {
 					...others,
 					messages,
 					tools:
-						this.tools?.map(tool =>
-							tool.to_openai_function_tool(),
-						) ?? [],
+						this.tools?.map(tool => tool.to_function_tool()) ?? [],
 				}
 
-				yield {type: "agent.reasoning.started", context: ctx, params}
+				this.emit("agent.reasoning.started", ctx, {params})
 
-				const response = (await client.chat.completions.create(params))
-					.choices[0]
+				const message = yield (
+					await client.chat.completions.create(params)
+				).choices[0]!.message
 
-				if (!response) {
+				if (!message) {
 					throw new Error(`expect create chat completions response`)
 				}
-				messages.push(response.message)
+				messages.push(message)
 
-				yield {
-					type: "agent.reasoning.completed",
-					context: ctx,
-					message: response.message,
-				}
+				this.emit("agent.reasoning.completed", ctx, {message})
 
-				const function_tool_calls =
-					response?.message.tool_calls?.filter(
-						call => call.type === "function",
-					)
+				const function_tool_calls = message.tool_calls?.filter(
+					call => call.type === "function",
+				)
 
 				if (!function_tool_calls?.length) {
-					yield {
-						type: "agent.completed",
-						context: ctx,
+					this.emit("agent.completed", ctx, {
 						messages: messages.slice(1),
-					}
+					})
 					return {context: ctx, messages: messages.slice(1)}
 				}
 
@@ -118,30 +169,22 @@ export class Agent<Context = unknown> implements Agent<Context> {
 					const tool = this.tools?.find(tool => tool.name === name)!
 
 					try {
-						yield {type: "tool.started", context: ctx, tool, id}
+						this.emit("tool.started", ctx, {tool, id})
 
 						const content = await tool.function(
 							ctx,
 							tool.input.parse(JSON.parse(args)),
 						)
-						yield {
-							type: "tool.completed",
-							context: ctx,
-							tool,
-							id,
-							content,
-						}
+						this.emit("tool.completed", ctx, {tool, id, content})
 
 						results.push({id, content})
 					} catch (e) {
-						yield {
-							type: "tool.failed",
-							context: ctx,
-							id,
+						this.emit("tool.failed", ctx, {
 							tool,
+							id,
 							error:
 								e instanceof Error ? e : new Error(String(e)),
-						}
+						})
 					}
 				}
 
@@ -159,13 +202,32 @@ export class Agent<Context = unknown> implements Agent<Context> {
 				)
 			}
 		} catch (e) {
-			yield {
-				type: "agent.failed",
-				context: ctx,
+			this.emit("agent.failed", ctx, {
 				error: e instanceof Error ? e : new Error(String(e)),
-			}
+			})
 			throw e
 		}
+	}
+
+	async run(
+		ctx: Context,
+		options: AgentRunOptions,
+		...middlewares: ((
+			value: OpenAI.ChatCompletionAssistantMessageParam,
+		) => Promise<OpenAI.ChatCompletionAssistantMessageParam>)[]
+	): Promise<AgentRunResult<Context>> {
+		const [head = async o => o, ...tail] = middlewares
+		const generator = this.generate(ctx, options)
+		let result = await generator.next()
+		while (!result.done) {
+			result = await generator.next(
+				await tail.reduce(
+					(acc, middleware) => acc.then(middleware),
+					head(result.value),
+				),
+			)
+		}
+		return result.value
 	}
 }
 
@@ -175,75 +237,7 @@ export type AgentRunOptions = {
 	client?: OpenAI
 } & OpenAI.ChatCompletionCreateParamsNonStreaming
 
-export type AgentRunResult<Context = unknown> =
-	OpenAI.ChatCompletionAssistantMessageParam & {context: Context}
-
-type AgentRunTraceToolBase<
-	Context,
-	T extends Pair<"tool", "started" | "completed" | "failed">,
-> = WithContext<Context, {type: T; tool: Tool<Context>; id: string}>
-
-export type AgentRunTraceToolStarted<Context = unknown> = AgentRunTraceToolBase<
-	Context,
-	"tool.started"
->
-
-export type AgentRunTraceToolCompleted<Context = unknown> =
-	AgentRunTraceToolBase<Context, "tool.completed"> & {content: any}
-
-export type AgentRunTraceToolFailed<Context = unknown> = AgentRunTraceToolBase<
-	Context,
-	"tool.failed"
-> & {error: Error}
-
-export type AgentRunTraceTool<Context = unknown> =
-	| AgentRunTraceToolStarted<Context>
-	| AgentRunTraceToolCompleted<Context>
-	| AgentRunTraceToolFailed<Context>
-
-export type AgentRunTraceAgentBase<
-	Context,
-	T extends Pair<
-		"agent",
-		| "started"
-		| "completed"
-		| "failed"
-		| Pair<"reasoning", "started" | "completed" | "failed">
-	>,
-> = WithContext<Context, {type: T}>
-
-export type AgentRunTraceAgentStarted<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.started">
-
-export type AgentRunTraceAgentReasoningStarted<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.reasoning.started"> & {
-		params: OpenAI.ChatCompletionCreateParamsNonStreaming
-	}
-
-export type AgentRunTraceAgentReasoningCompleted<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.reasoning.completed"> & {
-		message: OpenAI.ChatCompletionMessageParam
-	}
-
-export type AgentRunTraceAgentReasoningFailed<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.reasoning.failed"> & {error: Error}
-
-export type AgentRunTraceAgentCompleted<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.completed"> & {
-		messages: OpenAI.ChatCompletionMessageParam[]
-	}
-
-export type AgentRunTraceAgentFailed<Context = unknown> =
-	AgentRunTraceAgentBase<Context, "agent.failed"> & {error: Error}
-
-export type AgentRunTraceAgent<Context> =
-	| AgentRunTraceAgentStarted<Context>
-	| AgentRunTraceAgentReasoningStarted<Context>
-	| AgentRunTraceAgentReasoningCompleted<Context>
-	| AgentRunTraceAgentReasoningFailed<Context>
-	| AgentRunTraceAgentCompleted<Context>
-	| AgentRunTraceAgentFailed<Context>
-
-export type AgentRunTrace<Context = unknown> =
-	| AgentRunTraceTool<Context>
-	| AgentRunTraceAgent<Context>
+export type AgentRunResult<Context = unknown> = {
+	context: Context
+	messages: OpenAI.ChatCompletionMessageParam[]
+}

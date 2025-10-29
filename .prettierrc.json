@@ -11,5 +11,6 @@
 	"endOfLine": "lf",
 	"arrowParens": "avoid",
 	"singleQuote": false,
-	"semi": false
+	"semi": false,
+	"printWidth": 80
 }
