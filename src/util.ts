@@ -1,5 +1,7 @@
 export type AnyObject = Record<string, unknown>
 
+export type Pair<X extends string, Y extends string> = `${X}.${Y}`
+
 export type WithContext<Context = unknown, O extends AnyObject = AnyObject> = {
 	context: Context
 } & O

@@ -1,32 +1,55 @@
-import {z} from "zod"
-import type {AnyObject, WithContext} from "./util.ts"
-import type {Tool} from "./tool.ts"
 import OpenAI from "openai"
+import {z} from "zod"
+import {Tool} from "./tool.ts"
+import type {AnyObject, Pair, WithContext} from "./util.ts"
 
-export type AgentDefinition<
-	Context = unknown,
-	Input extends AnyObject = AnyObject,
-	Output extends AnyObject = AnyObject,
-> = {
+export type AgentDefinition<Context = unknown> = {
 	name: string
-	description?: string
+	description: string
 	system?: string
-	input?: z.ZodType<Input>
-	output?: z.ZodType<Output>
 	tools?: Tool<Context, any>[]
 }
 
 /**
  * Reason -> Act -> Observe
  */
-export class Agent<
-	Context = unknown,
-	Input extends AnyObject = AnyObject,
-	Output extends AnyObject = AnyObject,
-> implements Agent<Context, Input, Output>
-{
-	constructor(x: AgentDefinition<Context, Input, Output>) {
+export class Agent<Context = unknown> implements Agent<Context> {
+	constructor(x: AgentDefinition<Context>) {
 		Object.assign(this, x)
+	}
+
+	to_tool<
+		Input extends AnyObject = AnyObject,
+		Output extends AnyObject = AnyObject,
+	>(
+		ctx: Context,
+		input: z.ZodType<Input>,
+		output: z.ZodType<Output>,
+		{messages, ...others}: AgentRunOptions,
+	): Tool<Context, Input> {
+		return new Tool({
+			name: this.name,
+			description: this.description,
+			input,
+			function: (_context, input) =>
+				this.run(ctx, {
+					...others,
+					response_format: {
+						type: "json_schema",
+						json_schema: {
+							name: this.name,
+							description: output.description ?? "",
+							schema: z.toJSONSchema(output),
+							strict: false,
+						},
+					},
+					messages: [
+						...messages,
+						{role: "user", content: JSON.stringify(_context)},
+						{role: "user", content: JSON.stringify(input)},
+					],
+				}),
+		})
 	}
 
 	async *run(
@@ -146,11 +169,7 @@ export class Agent<
 	}
 }
 
-export interface Agent<
-	Context = unknown,
-	Input extends AnyObject = AnyObject,
-	Output extends AnyObject = AnyObject,
-> extends AgentDefinition<Context, Input, Output> {}
+export interface Agent<Context = unknown> extends AgentDefinition<Context> {}
 
 export type AgentRunOptions = {
 	client?: OpenAI
@@ -158,8 +177,6 @@ export type AgentRunOptions = {
 
 export type AgentRunResult<Context = unknown> =
 	OpenAI.ChatCompletionAssistantMessageParam & {context: Context}
-
-type Pair<X extends string, Y extends string> = `${X}.${Y}`
 
 type AgentRunTraceToolBase<
 	Context,
