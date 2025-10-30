@@ -6,6 +6,7 @@
 		"check": "pnpm tsc",
 		"format": "pnpm prettier -w ./**"
 	},
+	"exports": "./src/mod.ts",
 	"license": "LGPL-2.1-or-later",
 	"packageManager": "pnpm@10.15.0",
 	"peerDependencies": {
