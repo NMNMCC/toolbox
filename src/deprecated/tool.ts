@@ -1,6 +1,6 @@
 import OpenAI from "openai"
 import {z} from "zod"
-import type {AnyObject} from "./util.js"
+import type {AnyObject} from "../util.ts"
 
 export type ToolFunction<
 	Context = unknown,
