@@ -5,8 +5,8 @@ import {
 	type DescribedFunction,
 	type FunctionDescription,
 } from "./function.ts"
-import type {AnyObject} from "./util.ts"
-import z, {toJSONSchema, type ZodType} from "zod"
+import type {AnyObject, Promisable} from "./util.ts"
+import {toJSONSchema, type ZodType} from "zod"
 
 export type AgentDesciption<
 	Input extends ZodType<
@@ -28,30 +28,53 @@ export type DescribedAgent<
 	Input extends ZodType<any, AnyObject> = ZodType<any, AnyObject>,
 	Output extends ZodType<AnyObject> = ZodType<AnyObject>,
 > = DescribedFunction<Input, Output> & {
-	config: (config: AgentConfig) => DescribedAgent<Input, Output>
+	derive: (update: {
+		config?: (config: AgentConfig) => AgentConfig
+		middlewares?: (middlewares: AgentMiddleware[]) => AgentMiddleware[]
+	}) => DescribedAgent<Input, Output>
 }
 
-export const agent = <
-	Input extends ZodType<any, AnyObject> = ZodType<any, AnyObject>,
+export type AgentMiddleware = (
+	message: OpenAI.ChatCompletionMessageParam,
+) => Promisable<OpenAI.ChatCompletionMessageParam>
+
+export const define = <
+	Input extends ZodType<
+		OpenAI.ChatCompletionMessageParam[],
+		AnyObject
+	> = ZodType<OpenAI.ChatCompletionMessageParam[], AnyObject>,
 	Output extends ZodType<AnyObject> = ZodType<AnyObject>,
 >(
 	description: AgentDesciption<Input, Output>,
 	config: AgentConfig,
+	...middlewares: AgentMiddleware[]
 ): DescribedAgent<Input, Output> => {
 	return Object.assign(
 		describe(async input => {
 			const client = config.client ?? new OpenAI()
+			const process = async (
+				message: OpenAI.ChatCompletionMessageParam,
+			) =>
+				await middlewares.reduce<
+					Promise<OpenAI.ChatCompletionMessageParam>
+				>(
+					(acc, middleware) => acc.then(middleware),
+					new Promise(resolve => resolve(message)),
+				)
 
 			const messages: OpenAI.ChatCompletionMessageParam[] = []
 			while (true) {
 				const message = (
 					await client.chat.completions.create({
 						model: config?.model ?? "gpt-4o",
-						messages: [
-							{role: "system", content: description.instruction},
-							...(config.messages ?? []),
-							...description.input.parse(input),
-						],
+						messages: await Promise.all([
+							process({
+								role: "system",
+								content: description.instruction,
+							}),
+							...(config.messages ?? []).map(process),
+							...description.input.parse(input).map(process),
+						]),
 						tools: description.imports.map(func =>
 							zodFunction({
 								name: func.name,
@@ -83,49 +106,53 @@ export const agent = <
 					)
 				}
 				messages.push(
-					message,
+					await process(message),
 					...(
 						await Promise.all(
-							function_tool_calls.map<
-								Promise<OpenAI.ChatCompletionToolMessageParam>
-							>(
-								async ({
-									id,
-									function: {arguments: arg, name},
-								}) => {
-									const func = description.imports.find(
-										func => func.name === name,
-									)!
-									return {
-										role: "tool",
-										content: JSON.stringify(
-											await func(
-												func.input.parse(
-													JSON.parse(arg),
+							function_tool_calls
+								.map<
+									Promise<OpenAI.ChatCompletionToolMessageParam>
+								>(
+									async ({
+										id,
+										function: {arguments: arg, name},
+									}) => {
+										const func = description.imports.find(
+											func => func.name === name,
+										)!
+										return {
+											role: "tool",
+											content: JSON.stringify(
+												await func(
+													func.input.parse(
+														JSON.parse(arg),
+													),
 												),
 											),
-										),
-										tool_call_id: id,
-									}
-								},
-							),
+											tool_call_id: id,
+										}
+									},
+								)
+								.map(message => message.then(process)),
 						)
 					).filter(Boolean),
 				)
 			}
 		}, description),
-		{config: (config: AgentConfig) => agent(description, config)},
+		{
+			derive: (update: {
+				config?: (config: AgentConfig) => AgentConfig
+				middlewares?: (
+					middlewares: AgentMiddleware[],
+				) => AgentMiddleware[]
+			}): DescribedAgent<Input, Output> =>
+				define(
+					description,
+					update.config ? update.config(config) : config,
+					...(update.middlewares
+						? update.middlewares(middlewares)
+						: middlewares),
+				),
+		},
 	)
 }
-
-agent(
-	{
-		name: "",
-		description: "",
-		imports: [],
-		instruction: "",
-		input: z.object().transform(() => ""),
-		output: z.object(),
-	},
-	{model: "chatgpt-4o-latest"},
-)

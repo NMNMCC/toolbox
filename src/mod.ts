@@ -1,2 +1,2 @@
-export {Agent, type AgentDefinition} from "./deprecated/agent.ts"
-export {Tool, type ToolDefinition} from "./deprecated/tool.ts"
+export * from "./agent.ts"
+export * from "./function.ts"
