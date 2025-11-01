@@ -1,6 +1,5 @@
 import type {z, ZodType} from "zod"
-import type {AnyObject} from "../dist/util.js"
-import type {Promisable} from "./util.ts"
+import type {AnyObject, Promisable} from "./util.ts"
 
 export type DescribableFunction<
 	Input extends ZodType<any, AnyObject> = ZodType<any, AnyObject>,

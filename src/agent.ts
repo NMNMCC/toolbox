@@ -70,25 +70,25 @@ export const define = <
 			): Promise<OpenAI.ChatCompletionMessageParam[]> =>
 				(await chain)([message])
 
-			const messages: OpenAI.ChatCompletionMessageParam[] = []
+			const messages: OpenAI.ChatCompletionMessageParam[] = [
+				...(await process({
+					role: "system",
+					content: description.instruction,
+				})),
+				...(
+					await Promise.all(
+						[
+							...(config.messages ?? []),
+							...description.input.parse(input),
+						].map(process),
+					)
+				).flat(1),
+			]
 			while (true) {
 				const message = (
 					await client.chat.completions.create({
 						model: config?.model ?? "gpt-4o",
-						messages: [
-							...(await process({
-								role: "system",
-								content: description.instruction,
-							})),
-							...(
-								await Promise.all(
-									[
-										...(config.messages ?? []),
-										...description.input.parse(input),
-									].map(process),
-								)
-							).flat(1),
-						],
+						messages,
 						tools: description.imports.map(func =>
 							zodFunction({
 								name: func.name,
