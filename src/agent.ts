@@ -34,9 +34,13 @@ export type DescribedAgent<
 	}) => DescribedAgent<Input, Output>
 }
 
+export type AgentMiddlewareNext = (
+	message: OpenAI.ChatCompletionMessageParam[],
+) => Promisable<OpenAI.ChatCompletionMessageParam[]>
+
 export type AgentMiddleware = (
-	message: OpenAI.ChatCompletionMessageParam,
-) => Promisable<OpenAI.ChatCompletionMessageParam>
+	next: AgentMiddlewareNext,
+) => Promisable<AgentMiddlewareNext>
 
 export const define = <
 	Input extends ZodType<
@@ -52,29 +56,39 @@ export const define = <
 	return Object.assign(
 		describe(async input => {
 			const client = config.client ?? new OpenAI()
+
+			const chain: Promise<AgentMiddlewareNext> = middlewares.reduceRight(
+				async (
+					next: Promise<AgentMiddlewareNext>,
+					curr: AgentMiddleware,
+				) => await curr(await next),
+				Promise.resolve(async o => o),
+			)
+
 			const process = async (
 				message: OpenAI.ChatCompletionMessageParam,
-			) =>
-				await middlewares.reduce<
-					Promise<OpenAI.ChatCompletionMessageParam>
-				>(
-					(acc, middleware) => acc.then(middleware),
-					new Promise(resolve => resolve(message)),
-				)
+			): Promise<OpenAI.ChatCompletionMessageParam[]> =>
+				(await chain)([message])
 
 			const messages: OpenAI.ChatCompletionMessageParam[] = []
 			while (true) {
 				const message = (
 					await client.chat.completions.create({
 						model: config?.model ?? "gpt-4o",
-						messages: await Promise.all([
-							process({
+						messages: [
+							...(await process({
 								role: "system",
 								content: description.instruction,
-							}),
-							...(config.messages ?? []).map(process),
-							...description.input.parse(input).map(process),
-						]),
+							})),
+							...(
+								await Promise.all(
+									[
+										...(config.messages ?? []),
+										...description.input.parse(input),
+									].map(process),
+								)
+							).flat(1),
+						],
 						tools: description.imports.map(func =>
 							zodFunction({
 								name: func.name,
@@ -106,7 +120,7 @@ export const define = <
 					)
 				}
 				messages.push(
-					await process(message),
+					...(await process(message)),
 					...(
 						await Promise.all(
 							function_tool_calls
@@ -135,7 +149,9 @@ export const define = <
 								)
 								.map(message => message.then(process)),
 						)
-					).filter(Boolean),
+					)
+						.flat(1)
+						.filter(Boolean),
 				)
 			}
 		}, description),
