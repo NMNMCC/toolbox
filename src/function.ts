@@ -1,10 +1,10 @@
 import type {z, ZodType} from "zod"
-import type {AnyObject, Promisable} from "./util.ts"
+import type {AnyObject} from "./util.ts"
 
 export type DescribableFunction<
 	Input extends ZodType<any, AnyObject> = ZodType<any, AnyObject>,
 	Output extends ZodType<any> = ZodType<any>,
-> = (input: z.input<Input>) => Promisable<z.output<Output>>
+> = (input: z.input<Input>) => Promise<z.output<Output>>
 
 export type DescribedFunction<
 	Input extends ZodType<any, AnyObject> = ZodType<any, AnyObject>,
