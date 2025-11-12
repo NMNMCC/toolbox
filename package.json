@@ -1,9 +1,9 @@
 {
 	"type": "module",
 	"name": "@nmnmcc/toolbox",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"scripts": {
-		"build": "tsup ./src/mod.ts ./src/util.ts --format esm --dts --clean",
+		"build": "tsup ./src/mod.ts ./src/util.ts ./src/middlewares/*.ts --format esm --dts --clean",
 		"check": "tsc",
 		"format": "prettier -w ./**"
 	},
@@ -11,6 +11,10 @@
 		".": {
 			"types": "./dist/mod.d.ts",
 			"import": "./dist/mod.js"
+		},
+		"./middlewares/*": {
+			"types": "./dist/middlewares/*.d.ts",
+			"import": "./dist/middlewares/*.js"
 		},
 		"./util": {
 			"types": "./dist/util.d.ts",
@@ -25,15 +29,19 @@
 	"license": "LGPL-2.1-or-later",
 	"packageManager": "pnpm@10.15.0",
 	"peerDependencies": {
-		"openai": ">=6",
-		"zod": ">=4"
+		"openai": "^6",
+		"zod": "^4"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.1",
+		"@types/node": "^24.10.1",
 		"prettier": "^3.6.2",
 		"tsup": "^8.5.0",
 		"tsx": "^4.20.6",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.4"
+		"vitest": "^4.0.8"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.21.1",
+		"zod-to-json-schema": "^3.24.6"
 	}
 }

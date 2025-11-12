@@ -7,9 +7,6 @@
 		"types": [],
 
 		"allowImportingTsExtensions": true,
-		"sourceMap": true,
-		"declaration": true,
-		"declarationMap": true,
 
 		"noUncheckedIndexedAccess": true,
 		"noImplicitReturns": true,
