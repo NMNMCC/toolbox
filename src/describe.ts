@@ -1,6 +1,6 @@
 import type {z, ZodType} from "zod"
 import type {AnyObject} from "./util.ts"
-import type {Middleware as Middleware, MiddlewareNext} from "./middleware.ts"
+import type {Middleware, MiddlewareNext} from "./middleware.ts"
 import OpenAI from "openai"
 
 export type Describable<
@@ -43,9 +43,9 @@ export type LanguageModelInputContext<
 > = {
 	description: LanguageModelDescription<Input, Output>
 
-	input_processor: LanguageModelInitializer<Input, Output>
-	output_processor: LanguageModelFinalizer<Input, Output>
+	initializer: LanguageModelInitializer<Input, Output>
 	middlewares: LanguageModelMiddleware<Input, Output>[]
+	finalizer: LanguageModelFinalizer<Input, Output>
 
 	usage: OpenAI.CompletionUsage
 
@@ -187,8 +187,8 @@ export const describe: {
 				const context: LanguageModelInputContext<Input, Output> = {
 					description: description,
 
-					input_processor: initializer,
-					output_processor: finalizer,
+					initializer: initializer,
+					finalizer: finalizer,
 					middlewares,
 
 					usage: {
@@ -200,9 +200,10 @@ export const describe: {
 					input: description.input.parse(input),
 				}
 
-				return description.output.parse(
-					await initializer(context).then(chain).then(finalizer),
-				)
+				return await initializer(context)
+					.then(chain)
+					.then(finalizer)
+					.then(({output}) => description.output.parse(output))
 			},
 			description,
 		)

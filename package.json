@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@nmnmcc/toolbox",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"scripts": {
 		"build": "tsup ./src/mod.ts ./src/util.ts ./src/middlewares/*.ts --format esm --dts --clean",
 		"check": "tsc",
@@ -12,9 +12,17 @@
 			"types": "./dist/mod.d.ts",
 			"import": "./dist/mod.js"
 		},
+		"./initializers/*": {
+			"types": "./dist/initializers/*.d.ts",
+			"import": "./dist/initializers/*.js"
+		},
 		"./middlewares/*": {
 			"types": "./dist/middlewares/*.d.ts",
 			"import": "./dist/middlewares/*.js"
+		},
+		"./finalizers/*": {
+			"types": "./dist/finalizers/*.d.ts",
+			"import": "./dist/finalizers/*.js"
 		},
 		"./util": {
 			"types": "./dist/util.d.ts",
@@ -41,6 +49,6 @@
 		"vitest": "^4.0.8"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.21.1"
+		"robot3": "^1.2.0"
 	}
 }
