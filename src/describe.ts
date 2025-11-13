@@ -52,12 +52,15 @@ export type LanguageModelInputContext<
 	input: z.output<Input>
 }
 
+import {type IncomingHttpHeaders} from "node:http"
+
 export type LanguageModelMiddlewareContext<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = LanguageModelInputContext<Input, Output> & {
 	tools?: OpenAI.Chat.Completions.ChatCompletionFunctionTool[]
 	messages: OpenAI.ChatCompletionMessageParam[]
+	headers?: IncomingHttpHeaders
 }
 
 export type LanguageModelCompletionContext<
@@ -176,10 +179,13 @@ export const describe: {
 						const client = description.client ?? new OpenAI()
 						return {
 							...context,
-							completion: await client.chat.completions.create({
-								...description,
-								messages: context.messages,
-							}),
+							completion: await client.chat.completions.create(
+								{
+									...description,
+									messages: context.messages,
+								},
+								{headers: context.headers},
+							),
 						}
 					},
 				)
