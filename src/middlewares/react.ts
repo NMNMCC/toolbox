@@ -1,43 +1,48 @@
 import {zodFunction} from "openai/helpers/zod"
 import type {
+	DescribableInput,
+	DescribableOutput,
 	Described,
-	LanguageModelContext,
+	LanguageModelMiddlewareContext,
 	LanguageModelMiddleware,
 } from "../describe.ts"
 
 import type OpenAI from "openai"
 
-export type ReActOptions = {max_steps: number; tools: Described[]}
+export type ReActOptions = {max_steps: number; tools: Described<any, any>[]}
 
-export const react =
-	({max_steps, tools}: ReActOptions): LanguageModelMiddleware =>
-	async ({context, messages}, next) => {
-		const tools_by_name = new Map(tools.map(tool => [tool.name, tool]))
-		const openai_tools: OpenAI.Chat.Completions.ChatCompletionTool[] =
-			tools.map(tool =>
+export const react = <
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+>({
+	max_steps,
+	tools,
+}: ReActOptions): LanguageModelMiddleware<Input, Output> => {
+	const tools_by_name = new Map(tools.map(tool => [tool.name, tool]))
+
+	return async (context, next) => {
+		context.tools ??= []
+		context.tools.push(
+			...tools.map(tool =>
 				zodFunction({
 					name: tool.name,
 					description: tool.description,
 					parameters: tool.input,
 				}),
-			)
-
-		context.description.tools = openai_tools
+			),
+		)
 
 		for (let i = 0; i < max_steps; i++) {
-			const output = await next({context, messages})
+			const output = await next(context)
 
 			const message = output.completion.choices[0]?.message
 			if (!message) {
 				return output
 			}
-			messages.push(message)
+			context.messages.push(message)
 
 			if (!message.tool_calls) {
-				return {
-					completion: output.completion,
-					context: {...context, messages},
-				}
+				return output
 			}
 			const tool_outputs: OpenAI.ChatCompletionToolMessageParam[] =
 				await Promise.all(
@@ -82,22 +87,18 @@ export const react =
 					}),
 				)
 
-			messages.push(...tool_outputs)
+			context.messages.push(...tool_outputs)
 		}
 
-		throw new ReActMaxStepsReachedError(context, messages)
+		throw new ReActMaxStepsReachedError(context)
 	}
+}
 
 export class ReActMaxStepsReachedError extends Error {
-	context: LanguageModelContext<any, any>
-	messages: OpenAI.ChatCompletionMessageParam[]
+	context: LanguageModelMiddlewareContext<any, any>
 
-	constructor(
-		context: LanguageModelContext<any, any>,
-		messages: OpenAI.ChatCompletionMessageParam[],
-	) {
+	constructor(context: LanguageModelMiddlewareContext<any, any>) {
 		super("ReAct: Max steps reached")
 		this.context = context
-		this.messages = messages
 	}
 }

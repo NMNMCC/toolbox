@@ -25,101 +25,134 @@ export type LanguageModelMiddleware<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = Middleware<
-	LanguageModelMiddlewareInput<Input, Output>,
-	LanguageModelMiddlewareOutput<Input, Output>
+	LanguageModelMiddlewareContext<Input, Output>,
+	LanguageModelCompletionContext<Input, Output>
 >
 
 export type LanguageModelMiddlewareNext<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = MiddlewareNext<
-	LanguageModelMiddlewareInput<Input, Output>,
-	LanguageModelMiddlewareOutput<Input, Output>
+	LanguageModelMiddlewareContext<Input, Output>,
+	LanguageModelCompletionContext<Input, Output>
 >
 
-export type LanguageModelMiddlewareInput<
-	Input extends DescribableInput = DescribableInput,
-	Output extends DescribableOutput = DescribableOutput,
-> = {
-	context: LanguageModelContext<Input, Output>
-	messages: OpenAI.ChatCompletionMessageParam[]
-}
-export type LanguageModelMiddlewareOutput<
-	Input extends DescribableInput = DescribableInput,
-	Output extends DescribableOutput = DescribableOutput,
-> = {
-	context: LanguageModelContext<Input, Output>
-	completion: OpenAI.Chat.Completions.ChatCompletion
-}
-
-export type LanguageModelContext<
+export type LanguageModelInputContext<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = {
 	description: LanguageModelDescription<Input, Output>
 
-	input_processor: LanguageModelInputProcessor<Input>
-	output_processor: LanguageModelOutputProcessor<Output>
+	input_processor: LanguageModelInitializer<Input, Output>
+	output_processor: LanguageModelFinalizer<Input, Output>
 	middlewares: LanguageModelMiddleware<Input, Output>[]
 
 	usage: OpenAI.CompletionUsage
+
+	input: z.output<Input>
 }
 
-export type LanguageModelInputProcessor<Input extends DescribableInput> = (
-	input: z.input<Input>,
-) => Promise<OpenAI.ChatCompletionMessageParam[]>
+export type LanguageModelMiddlewareContext<
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+> = LanguageModelInputContext<Input, Output> & {
+	tools?: OpenAI.Chat.Completions.ChatCompletionFunctionTool[]
+	messages: OpenAI.ChatCompletionMessageParam[]
+}
 
-export type LanguageModelOutputProcessor<Output extends DescribableOutput> = (
-	output: OpenAI.Chat.Completions.ChatCompletion,
-) => Promise<z.output<Output>>
+export type LanguageModelCompletionContext<
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+> = LanguageModelMiddlewareContext<Input, Output> & {
+	completion: OpenAI.Chat.Completions.ChatCompletion
+}
 
-export type Imports<
+export type LanguageModelOutputContext<
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+> = LanguageModelCompletionContext<Input, Output> & {output: z.input<Output>}
+
+export type LanguageModelInitializer<
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+> = (
+	context: LanguageModelInputContext<Input, Output>,
+) => Promise<LanguageModelMiddlewareContext<Input, Output>>
+
+export type LanguageModelFinalizer<
+	Input extends DescribableInput = DescribableInput,
+	Output extends DescribableOutput = DescribableOutput,
+> = (
+	context: LanguageModelCompletionContext<Input, Output>,
+) => Promise<LanguageModelOutputContext<Input, Output>>
+
+export type LanguageModelImports<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = [
-	LanguageModelInputProcessor<Input>,
-	LanguageModelOutputProcessor<Output>,
-	...LanguageModelMiddleware<Input, Output>[],
+	initializer: LanguageModelInitializer<Input, Output>,
+	...middlewares: LanguageModelMiddleware<Input, Output>[],
+	finalizer: LanguageModelFinalizer<Input, Output>,
 ]
 
 export type LanguageModelDescription<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > = Description<Input, Output> &
-	OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
-		client?: OpenAI
-	}
+	Omit<
+		OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+		"messages"
+	> &
+	Partial<
+		Pick<
+			OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+			"messages"
+		>
+	> & {client?: OpenAI}
 
 export const describe: {
 	<
-		Input extends DescribableInput = DescribableInput,
-		Output extends DescribableOutput = DescribableOutput,
+		const Input extends DescribableInput = DescribableInput,
+		const Output extends DescribableOutput = DescribableOutput,
 	>(
-		describable: Describable<Input, Output>,
 		description: Description<Input, Output>,
+		describable: Describable<Input, Output>,
 	): Described<Input, Output>
 	<
-		Input extends DescribableInput = DescribableInput,
-		Output extends DescribableOutput = DescribableOutput,
+		const Input extends DescribableInput = DescribableInput,
+		const Output extends DescribableOutput = DescribableOutput,
 	>(
-		imports: Imports<Input, Output>,
 		description: LanguageModelDescription<Input, Output>,
+		imports: LanguageModelImports<Input, Output>,
 	): Described<Input, Output>
 } = <
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 >(
 	...inputs:
-		| [Describable<Input, Output>, Description<Input, Output>]
-		| [Imports<Input, Output>, LanguageModelDescription<Input, Output>]
+		| [Description<Input, Output>, Describable<Input, Output>]
+		| [
+				LanguageModelDescription<Input, Output>,
+				LanguageModelImports<Input, Output>,
+		  ]
 ): Described<Input, Output> => {
-	const [first, second] = inputs
+	const [description, second] = inputs
 
-	if (Array.isArray(first) && "model" in second) {
+	if (Array.isArray(second) && "model" in description) {
 		return Object.assign(
 			async (input: z.input<Input>): Promise<z.output<Output>> => {
-				const [input_processor, output_processor, ...middlewares] =
-					first
+				const initializer = second[0] as LanguageModelInitializer<
+					Input,
+					Output
+				>
+				const finalizer = second.at(-1) as LanguageModelFinalizer<
+					Input,
+					Output
+				>
+				const middlewares = second.slice(
+					1,
+					-1,
+				) as LanguageModelMiddleware<Input, Output>[]
 
 				const chain = middlewares.reduceRight(
 					(
@@ -127,54 +160,56 @@ export const describe: {
 						curr: LanguageModelMiddleware<Input, Output>,
 					) =>
 						(
-							input: LanguageModelMiddlewareInput<Input, Output>,
+							input: LanguageModelMiddlewareContext<
+								Input,
+								Output
+							>,
 						): Promise<
-							LanguageModelMiddlewareOutput<Input, Output>
+							LanguageModelCompletionContext<Input, Output>
 						> =>
 							curr(input, prev),
 					async (
-						input: LanguageModelMiddlewareInput<Input, Output>,
+						context: LanguageModelMiddlewareContext<Input, Output>,
 					): Promise<
-						LanguageModelMiddlewareOutput<Input, Output>
+						LanguageModelCompletionContext<Input, Output>
 					> => {
-						const client = second.client ?? new OpenAI()
+						const client = description.client ?? new OpenAI()
 						return {
-							context: input.context,
+							...context,
 							completion: await client.chat.completions.create({
-								...second,
-								messages: input.messages,
+								...description,
+								messages: context.messages,
 							}),
 						}
 					},
 				)
 
-				return await input_processor(input)
-					.then(messages =>
-						chain({
-							context: {
-								description: second,
+				const context: LanguageModelInputContext<Input, Output> = {
+					description: description,
 
-								input_processor,
-								output_processor,
-								middlewares,
+					input_processor: initializer,
+					output_processor: finalizer,
+					middlewares,
 
-								usage: {
-									completion_tokens: 0,
-									prompt_tokens: 0,
-									total_tokens: 0,
-								},
-							},
-							messages,
-						}),
-					)
-					.then(({completion}) => output_processor(completion))
+					usage: {
+						completion_tokens: 0,
+						prompt_tokens: 0,
+						total_tokens: 0,
+					},
+
+					input: description.input.parse(input),
+				}
+
+				return description.output.parse(
+					await initializer(context).then(chain).then(finalizer),
+				)
 			},
-			second,
+			description,
 		)
 	}
 
 	return Object.assign(
-		first as Describable<Input, Output>,
-		second as Description<Input, Output>,
+		second as Describable<Input, Output>,
+		description as Description<Input, Output>,
 	) as Described<Input, Output>
 }

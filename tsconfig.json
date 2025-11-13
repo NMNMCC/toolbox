@@ -15,6 +15,7 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
 		"noPropertyAccessFromIndexSignature": true,
+		"noImplicitThis": true,
 
 		"strict": true,
 		"strictBuiltinIteratorReturn": true,
