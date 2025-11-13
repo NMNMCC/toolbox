@@ -1,9 +1,9 @@
 {
 	"type": "module",
 	"name": "@nmnmcc/toolbox",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"scripts": {
-		"build": "tsup ./src/mod.ts ./src/util.ts ./src/middlewares/*.ts --format esm --dts --clean",
+		"build": "tsup ./src/mod.ts ./src/util.ts ./src/initializers/*.ts ./src/middlewares/*.ts ./src/finalizers/*.ts --format esm --dts --clean",
 		"check": "tsc",
 		"format": "prettier -w ./**"
 	},
