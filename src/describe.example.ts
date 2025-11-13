@@ -1,6 +1,6 @@
 import {z} from "zod"
 import {describe} from "./describe.ts"
-import {react} from "./middlewares/react.ts"
+import {dspy} from "./mod.ts"
 
 const sum = describe(
 	{
@@ -23,8 +23,8 @@ const vibesum = describe(
 	},
 	[
 		async ctx => ({...ctx, messages: []}),
-		async (ctx, next) => await next(ctx),
-		react({max_steps: 10, tools: [sum]}),
+		dspy.chain_of_thought(),
+		dspy.react({max_steps: 10, tools: [sum]}),
 		async ctx => ({
 			...ctx,
 			output: JSON.parse(
