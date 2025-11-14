@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@nmnmcc/toolbox",
-	"version": "0.4.3",
+	"version": "0.4.4",
 	"scripts": {
 		"build": "tsup ./src/mod.ts ./src/util.ts ./src/initializers/*.ts ./src/middlewares/*.ts ./src/finalizers/*.ts --format esm --dts --clean",
 		"check": "tsc",
@@ -30,6 +30,7 @@
 		}
 	},
 	"files": [
+		"./examples",
 		"./src",
 		"./dist",
 		"./README.md"
@@ -43,12 +44,13 @@
 	"devDependencies": {
 		"@types/node": "^24.10.1",
 		"prettier": "^3.6.2",
-		"tsup": "^8.5.0",
+		"tsup": "^8.5.1",
 		"tsx": "^4.20.6",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.8"
 	},
 	"dependencies": {
+		"@opentelemetry/api": "^1.9.0",
 		"robot3": "^1.2.0"
 	}
 }

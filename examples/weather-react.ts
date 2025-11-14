@@ -1,9 +1,10 @@
 import {z} from "zod"
-import {describe} from "./describe.ts"
-import {react} from "./middlewares/react.ts"
-import {initializer} from "./initializers/initializer.ts"
-import {finalizer} from "./finalizers/finalizer.ts"
-import {retry} from "./middlewares/retry.ts"
+
+import {describe} from "../src/describe.ts"
+import {initializer} from "../src/initializers/initializer.ts"
+import {react} from "../src/middlewares/react.ts"
+import {retry} from "../src/middlewares/retry.ts"
+import {finalizer} from "../src/finalizers/finalizer.ts"
 
 const get_weather = describe(
 	{
@@ -26,7 +27,6 @@ const get_weather = describe(
 		}),
 	},
 	async ({location, units = "celsius"}) => {
-		// Simulated weather data - in a real application, this would fetch from a weather API
 		const weather_data = {
 			beijing: {
 				temperature: units === "celsius" ? 22 : 72,
@@ -52,12 +52,10 @@ const get_weather = describe(
 				humidity: 80,
 				windSpeed: 18,
 			},
-		}
+		} as const
 
 		const normalized = location.toLowerCase().replace(/\s+/g, "")
-		const data =
-			(weather_data as Record<string, any>)[normalized] ||
-			weather_data["beijing"]
+		const data = weather_data[normalized as keyof typeof weather_data] ?? weather_data.beijing
 
 		return {
 			location,
@@ -70,7 +68,6 @@ const get_weather = describe(
 	},
 )
 
-// @ts-expect-error - example
 const weather_query = describe(
 	{
 		name: "weather_query",
@@ -103,3 +100,15 @@ const weather_query = describe(
 		finalizer(),
 	],
 )
+
+async function main() {
+	const result = await weather_query({
+		query: "What's the weather like in Beijing today in celsius?",
+	})
+
+	console.dir(result, {depth: null})
+}
+
+void main()
+
+
