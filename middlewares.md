@@ -1,6 +1,7 @@
 # Middlewares
 
-Middlewares provide composable behaviors for LLM calls. Each middleware can modify the request, transform the response, or add side effects.
+Middlewares provide composable behaviors for LLM calls. Each middleware can
+modify the request, transform the response, or add side effects.
 
 ## Table of Contents
 
@@ -38,7 +39,8 @@ cache({store, key: ctx => `${ctx.description.name}:${ctx.input.id}`})
 **Options:**
 
 - `store`: Object with `get(key)` and `set(key, value)` methods
-- `key`: Optional function to generate cache key (defaults to function name + stringified input)
+- `key`: Optional function to generate cache key (defaults to function name +
+  stringified input)
 
 ## `memory`
 
@@ -75,10 +77,7 @@ const chat = describe(
 	{
 		name: "chat",
 		description: "Chat with memory",
-		input: z.object({
-			session_id: z.string(),
-			message: z.string(),
-		}),
+		input: z.object({session_id: z.string(), message: z.string()}),
 		output: z.object({reply: z.string()}),
 		model: "gpt-4o",
 	},
@@ -165,7 +164,8 @@ timeout(30000) // 30 second timeout
 
 ## `react`
 
-Implements the ReAct (Reasoning and Acting) pattern for tool-calling and agentic behavior.
+Implements the ReAct (Reasoning and Acting) pattern for tool-calling and agentic
+behavior.
 
 **Import:**
 
@@ -197,7 +197,9 @@ const agent = describe(
 		model: "gpt-4o",
 	},
 	[
-		initializer("You are a weather assistant. Use tools to answer questions."),
+		initializer(
+			"You are a weather assistant. Use tools to answer questions.",
+		),
 		react({max_steps: 10, tools: [get_weather]}),
 		finalizer(),
 	],

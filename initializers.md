@@ -1,6 +1,7 @@
 # Initializers
 
-Initializers convert the input context into the initial message array that will be sent to the language model.
+Initializers convert the input context into the initial message array that will
+be sent to the language model.
 
 ## `initializer`
 
@@ -21,8 +22,10 @@ initializer("You are a helpful assistant that answers questions concisely.")
 **Behavior:**
 
 - Sets up a system message with the provided prompt
-- Formats user input as a structured message with function name, description, and JSON input
-- Automatically configures `response_format` for structured output when the output schema is a Zod object
+- Formats user input as a structured message with function name, description,
+  and JSON input
+- Automatically configures `response_format` for structured output when the
+  output schema is a Zod object
 
 **Example:**
 
@@ -81,7 +84,7 @@ const custom_initializer =
 							ctx.description.output,
 							ctx.description.name,
 							{description: ctx.description.description},
-					  )
+						)
 					: undefined,
 		},
 		messages: [

@@ -7,7 +7,10 @@ Composable middleware for structured LLM calls with TypeScript
 
 ## Introduction
 
-`@nmnmcc/toolbox` is a TypeScript library for building structured, type-safe LLM applications with composable middleware. It provides a functional approach to defining language model interactions with strong type inference, schema validation via Zod, and a middleware pattern inspired by web frameworks.
+`@nmnmcc/toolbox` is a TypeScript library for building structured, type-safe LLM
+applications with composable middleware. It provides a functional approach to
+defining language model interactions with strong type inference, schema
+validation via Zod, and a middleware pattern inspired by web frameworks.
 
 **Key Features:**
 
@@ -21,12 +24,12 @@ Composable middleware for structured LLM calls with TypeScript
 - [Installation](#installation)
 - [TypeScript Compatibility](#typescript-compatibility)
 - [The `describe` Function](#the-describe-function)
-  - [Describing Regular Functions](#describing-regular-functions)
-  - [Describing LLM-Powered Functions](#describing-llm-powered-functions)
+    - [Describing Regular Functions](#describing-regular-functions)
+    - [Describing LLM-Powered Functions](#describing-llm-powered-functions)
 - [Extending the Library](#extending-the-library)
-  - [Creating Custom Middleware](#creating-custom-middleware)
-  - [Middleware Interface](#middleware-interface)
-  - [Custom Middleware Examples](#custom-middleware-examples)
+    - [Creating Custom Middleware](#creating-custom-middleware)
+    - [Middleware Interface](#middleware-interface)
+    - [Custom Middleware Examples](#custom-middleware-examples)
 - [Built-in Components](#built-in-components)
 - [License](#license)
 
@@ -99,7 +102,9 @@ const summarize = describe(
 		temperature: 0.7,
 	},
 	[
-		initializer("You are a helpful assistant that summarizes text concisely."),
+		initializer(
+			"You are a helpful assistant that summarizes text concisely.",
+		),
 		logging(),
 		retry(2),
 		finalizer(),
@@ -143,11 +148,15 @@ function describe<Input, Output>(
 
 ## Extending the Library
 
-The library is designed to be extended with custom middleware. This section explains how to create your own middleware to add custom behavior to your LLM calls.
+The library is designed to be extended with custom middleware. This section
+explains how to create your own middleware to add custom behavior to your LLM
+calls.
 
 ### Creating Custom Middleware
 
-Middleware in this library follows a pattern similar to Express.js or Koa. Each middleware is a function that receives a context and a `next` function, allowing you to:
+Middleware in this library follows a pattern similar to Express.js or Koa. Each
+middleware is a function that receives a context and a `next` function, allowing
+you to:
 
 - Inspect or modify the request context before calling the LLM
 - Call `next(context)` to continue the chain
@@ -297,10 +306,7 @@ const add_context = <Input, Output>(
 			...context,
 			messages: [
 				...context.messages,
-				{
-					role: "system" as const,
-					content: additional_context,
-				},
+				{role: "system" as const, content: additional_context},
 			],
 		}
 
@@ -332,21 +338,24 @@ const standard_middlewares = aggregator(logging(), retry(3), timeout(30000))
 
 ## Built-in Components
 
-This library comes with several built-in components to help you get started quickly. For detailed documentation, see:
+This library comes with several built-in components to help you get started
+quickly. For detailed documentation, see:
 
-- **[Initializers](./initializers.md)** - Convert input into initial message arrays
-  - `initializer` - Standard initializer with system prompt
-- **[Middlewares](./middlewares.md)** - Composable middleware for common patterns
-  - `cache` - Cache LLM responses
-  - `memory` - Maintain conversation history
-  - `retry` - Retry failed calls
-  - `logging` - Log execution metrics
-  - `timeout` - Add timeouts
-  - `react` - ReAct pattern for tool calling
-  - `otel` - OpenTelemetry tracing
-  - `aggregator` - Compose multiple middlewares
+- **[Initializers](./initializers.md)** - Convert input into initial message
+  arrays
+    - `initializer` - Standard initializer with system prompt
+- **[Middlewares](./middlewares.md)** - Composable middleware for common
+  patterns
+    - `cache` - Cache LLM responses
+    - `memory` - Maintain conversation history
+    - `retry` - Retry failed calls
+    - `logging` - Log execution metrics
+    - `timeout` - Add timeouts
+    - `react` - ReAct pattern for tool calling
+    - `otel` - OpenTelemetry tracing
+    - `aggregator` - Compose multiple middlewares
 - **[Finalizers](./finalizers.md)** - Extract output from completions
-  - `finalizer` - Standard JSON parser
+    - `finalizer` - Standard JSON parser
 
 ## License
 
