@@ -53,9 +53,7 @@ const search_flights = describe(
 			to: z.string().describe("Destination city"),
 			date: z.string().describe("Departure date in YYYY-MM-DD format"),
 		}),
-		output: z.object({
-			flights: z.array(Flight),
-		}),
+		output: z.object({flights: z.array(Flight)}),
 	},
 	async ({from, to, date}) => {
 		// In a real app this would call an external API.
@@ -91,12 +89,12 @@ const search_hotels = describe(
 		input: z.object({
 			city: z.string(),
 			checkIn: z.string().describe("Check-in date in YYYY-MM-DD format"),
-			checkOut: z.string().describe("Check-out date in YYYY-MM-DD format"),
+			checkOut: z
+				.string()
+				.describe("Check-out date in YYYY-MM-DD format"),
 			maxPricePerNight: z.number().describe("Maximum budget per night"),
 		}),
-		output: z.object({
-			hotels: z.array(Hotel),
-		}),
+		output: z.object({hotels: z.array(Hotel)}),
 	},
 	async ({city, maxPricePerNight}) => {
 		const base: Omit<z.infer<typeof Hotel>, "pricePerNight"> = {
@@ -123,11 +121,11 @@ const recommend_activities = describe(
 		input: z.object({
 			city: z.string(),
 			interests: z.array(z.string()).describe("User interests"),
-			maxBudget: z.number().describe("Approximate max budget for activities"),
+			maxBudget: z
+				.number()
+				.describe("Approximate max budget for activities"),
 		}),
-		output: z.object({
-			activities: z.array(Activity),
-		}),
+		output: z.object({activities: z.array(Activity)}),
 	},
 	async ({city, interests, maxBudget}) => {
 		const basePrice = Math.max(10, Math.min(maxBudget / 3, 60))
@@ -228,5 +226,3 @@ async function main() {
 }
 
 void main()
-
-
