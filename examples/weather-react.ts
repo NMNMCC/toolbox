@@ -55,7 +55,9 @@ const get_weather = describe(
 		} as const
 
 		const normalized = location.toLowerCase().replace(/\s+/g, "")
-		const data = weather_data[normalized as keyof typeof weather_data] ?? weather_data.beijing
+		const data =
+			weather_data[normalized as keyof typeof weather_data] ??
+			weather_data.beijing
 
 		return {
 			location,
@@ -110,5 +112,3 @@ async function main() {
 }
 
 void main()
-
-

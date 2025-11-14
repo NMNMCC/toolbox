@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@nmnmcc/toolbox",
-	"version": "0.4.4",
+	"version": "0.4.5",
 	"scripts": {
 		"build": "tsup ./src/mod.ts ./src/util.ts ./src/initializers/*.ts ./src/middlewares/*.ts ./src/finalizers/*.ts --format esm --dts --clean",
 		"check": "tsc",
