@@ -21,7 +21,7 @@ Caches LLM responses to avoid redundant API calls for identical inputs.
 **Import:**
 
 ```typescript
-import {cache} from "@nmnmcc/toolbox/middlewares/cache"
+import { cache } from "@nmnmcc/toolbox/middlewares/cache";
 ```
 
 **Usage:**
@@ -30,10 +30,10 @@ import {cache} from "@nmnmcc/toolbox/middlewares/cache"
 const store = {
 	get: async (key: string) => cache_map.get(key),
 	set: async (key: string, value: any) => cache_map.set(key, value),
-}
+};
 
-cache({store})
-cache({store, key: ctx => `${ctx.description.name}:${ctx.input.id}`})
+cache({ store });
+cache({ store, key: (ctx) => `${ctx.description.name}:${ctx.input.id}` });
 ```
 
 **Options:**
@@ -49,7 +49,7 @@ Maintains conversation history across multiple calls for stateful interactions.
 **Import:**
 
 ```typescript
-import {memory} from "@nmnmcc/toolbox/middlewares/memory"
+import { memory } from "@nmnmcc/toolbox/middlewares/memory";
 ```
 
 **Usage:**
@@ -57,18 +57,19 @@ import {memory} from "@nmnmcc/toolbox/middlewares/memory"
 ```typescript
 const store = {
 	get: async (key: string) => history_map.get(key),
-	set: async (key: string, messages: any[]) => history_map.set(key, messages),
-}
+	set: async (key: string, history: any[]) => history_map.set(key, history),
+};
 
-memory({store})
-memory({store, key: ctx => ctx.input.session_id, max_messages: 50})
+memory({ store });
+memory({ store, key: (ctx) => ctx.input.session_id, max_history: 50 });
 ```
 
 **Options:**
 
-- `store`: Object with `get(key)` and `set(key, messages)` methods
+-- `store`: Object with `get(key)` and `set(key, history)` methods
+
 - `key`: Optional function to generate memory key (defaults to function name)
-- `max_messages`: Optional limit on conversation history length
+- `max_history`: Optional limit on conversation history length
 
 **Example:**
 
@@ -77,19 +78,19 @@ const chat = describe(
 	{
 		name: "chat",
 		description: "Chat with memory",
-		input: z.object({session_id: z.string(), message: z.string()}),
-		output: z.object({reply: z.string()}),
+		input: z.object({ session_id: z.string(), message: z.string() }),
+		output: z.object({ reply: z.string() }),
 		model: "gpt-4o",
 	},
 	[
 		initializer("You are a helpful assistant."),
-		memory({store, key: ctx => ctx.input.session_id}),
+		memory({ store, key: (ctx) => ctx.input.session_id }),
 		finalizer(),
 	],
-)
+);
 
-await chat({session_id: "user-123", message: "My name is Alice"})
-await chat({session_id: "user-123", message: "What's my name?"})
+await chat({ session_id: "user-123", message: "My name is Alice" });
+await chat({ session_id: "user-123", message: "What's my name?" });
 // Response: "Your name is Alice"
 ```
 
@@ -100,13 +101,13 @@ Retries failed LLM calls.
 **Import:**
 
 ```typescript
-import {retry} from "@nmnmcc/toolbox/middlewares/retry"
+import { retry } from "@nmnmcc/toolbox/middlewares/retry";
 ```
 
 **Usage:**
 
 ```typescript
-retry(3) // Retry up to 3 times on failure
+retry(3); // Retry up to 3 times on failure
 ```
 
 **Behavior:**
@@ -122,19 +123,20 @@ Logs execution time and token usage for monitoring.
 **Import:**
 
 ```typescript
-import {logging} from "@nmnmcc/toolbox/middlewares/logging"
+import { logging } from "@nmnmcc/toolbox/middlewares/logging";
 ```
 
 **Usage:**
 
 ```typescript
-logging() // Uses default console.log
+logging(); // Uses default console.log
 logging({
-	log: async ({context, result, elapsed_ms}) => {
-		console.log(`${context.description.name} took ${elapsed_ms}ms`)
-		console.log(`Tokens: ${result.completion.usage?.total_tokens}`)
+	log: async ({ context, result, elapsed_ms }) => {
+		console.log(`${context.description.name} took ${elapsed_ms}ms`);
+		const usage = result.history.at(-1)?.[1].at(-1)?.usage;
+		console.log(`Tokens: ${usage?.total_tokens}`);
 	},
-})
+});
 ```
 
 **Options:**
@@ -148,13 +150,13 @@ Adds a timeout to LLM calls to prevent hanging.
 **Import:**
 
 ```typescript
-import {timeout} from "@nmnmcc/toolbox/middlewares/timeout"
+import { timeout } from "@nmnmcc/toolbox/middlewares/timeout";
 ```
 
 **Usage:**
 
 ```typescript
-timeout(30000) // 30 second timeout
+timeout(30000); // 30 second timeout
 ```
 
 **Behavior:**
@@ -170,7 +172,7 @@ behavior.
 **Import:**
 
 ```typescript
-import {react} from "@nmnmcc/toolbox/middlewares/react"
+import { react } from "@nmnmcc/toolbox/middlewares/react";
 ```
 
 **Usage:**
@@ -180,30 +182,30 @@ const get_weather = describe(
 	{
 		name: "get_weather",
 		description: "Get weather for a location",
-		input: z.object({location: z.string()}),
-		output: z.object({temperature: z.number(), condition: z.string()}),
+		input: z.object({ location: z.string() }),
+		output: z.object({ temperature: z.number(), condition: z.string() }),
 	},
-	async ({location}) => {
-		return {temperature: 72, condition: "sunny"}
+	async ({ location }) => {
+		return { temperature: 72, condition: "sunny" };
 	},
-)
+);
 
 const agent = describe(
 	{
 		name: "weather_agent",
 		description: "Answer weather questions",
-		input: z.object({query: z.string()}),
-		output: z.object({answer: z.string()}),
+		input: z.object({ query: z.string() }),
+		output: z.object({ answer: z.string() }),
 		model: "gpt-4o",
 	},
 	[
 		initializer(
 			"You are a weather assistant. Use tools to answer questions.",
 		),
-		react({max_steps: 10, tools: [get_weather]}),
+		react({ max_steps: 10, tools: [get_weather] }),
 		finalizer(),
 	],
-)
+);
 ```
 
 **Options:**
@@ -225,18 +227,18 @@ Adds OpenTelemetry tracing for observability.
 **Import:**
 
 ```typescript
-import {otel} from "@nmnmcc/toolbox/middlewares/otel"
+import { otel } from "@nmnmcc/toolbox/middlewares/otel";
 ```
 
 **Usage:**
 
 ```typescript
-import {trace} from "@opentelemetry/api"
+import { trace } from "@opentelemetry/api";
 
-const tracer = trace.getTracer("my-app")
+const tracer = trace.getTracer("my-app");
 
-otel({tracer})
-otel({tracer, attributes: {service: "llm-service"}})
+otel({ tracer });
+otel({ tracer, attributes: { service: "llm-service" } });
 ```
 
 **Options:**
@@ -251,13 +253,13 @@ Composes multiple middlewares into a single middleware.
 **Import:**
 
 ```typescript
-import {aggregator} from "@nmnmcc/toolbox/middlewares/aggregator"
+import { aggregator } from "@nmnmcc/toolbox/middlewares/aggregator";
 ```
 
 **Usage:**
 
 ```typescript
-const standard_middlewares = aggregator(logging(), retry(3), timeout(30000))
+const standard_middlewares = aggregator(logging(), retry(3), timeout(30000));
 
 const my_function = describe(
 	{
@@ -268,7 +270,7 @@ const my_function = describe(
 		model: "gpt-4o",
 	},
 	[initializer("..."), standard_middlewares, finalizer()],
-)
+);
 ```
 
 **Behavior:**

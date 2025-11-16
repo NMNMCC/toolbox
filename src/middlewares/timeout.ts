@@ -1,7 +1,6 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
@@ -32,13 +31,11 @@ export const timeout =
 	async (
 		context: LanguageModelMiddlewareContext<Input, Output>,
 		next: LanguageModelMiddlewareNext<Input, Output>,
-	): Promise<LanguageModelCompletionContext<Input, Output>> => {
+	) => {
 		let timer: ReturnType<typeof setTimeout> | undefined
 
 		try {
-			const result = await Promise.race<
-				Promise<LanguageModelCompletionContext<Input, Output>>
-			>([
+			const result = await Promise.race([
 				next(context),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(

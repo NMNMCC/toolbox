@@ -1,7 +1,6 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
@@ -17,7 +16,7 @@ export const aggregator =
 	async (
 		context: LanguageModelMiddlewareContext<Input, Output>,
 		next: LanguageModelMiddlewareNext<Input, Output>,
-	): Promise<LanguageModelCompletionContext<Input, Output>> => {
+	) => {
 		const chain = middlewares.reduceRight<
 			LanguageModelMiddlewareNext<Input, Output>
 		>(
@@ -27,7 +26,7 @@ export const aggregator =
 			) =>
 				async (
 					ctx: LanguageModelMiddlewareContext<Input, Output>,
-				): Promise<LanguageModelCompletionContext<Input, Output>> =>
+				): Promise<LanguageModelMiddlewareContext<Input, Output>> =>
 					curr(ctx, prev),
 			next,
 		)

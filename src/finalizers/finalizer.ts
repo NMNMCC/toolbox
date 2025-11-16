@@ -1,7 +1,7 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
+	LanguageModelMiddlewareContext,
 	LanguageModelFinalizer,
 } from "../describe.ts"
 
@@ -13,21 +13,22 @@ export const finalizer =
 		parse: (content: string) => any = JSON.parse,
 	): LanguageModelFinalizer<Input, Output> =>
 	async ctx => {
-		const content = ctx.completion.choices[0]?.message.content
+		const content = ctx.history.at(-1)?.[1].at(-1)?.choices[0]
+			?.message.content
 		if (!content) {
 			throw new FinalizerContentNotFoundError(ctx)
 		}
 
-		return {...ctx, output: await parse(content)}
+		return await parse(content)
 	}
 
 export class FinalizerContentNotFoundError<
 	Input extends DescribableInput = DescribableInput,
 	Output extends DescribableOutput = DescribableOutput,
 > extends Error {
-	context: LanguageModelCompletionContext<Input, Output>
+	context: LanguageModelMiddlewareContext<Input, Output>
 
-	constructor(context: LanguageModelCompletionContext<Input, Output>) {
+	constructor(context: LanguageModelMiddlewareContext<Input, Output>) {
 		super("Finalizer: Content not found")
 		this.context = context
 	}

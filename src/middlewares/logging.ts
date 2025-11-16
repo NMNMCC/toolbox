@@ -1,7 +1,6 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
@@ -12,7 +11,7 @@ export type LoggingEvent<
 	Output extends DescribableOutput = DescribableOutput,
 > = {
 	context: LanguageModelMiddlewareContext<Input, Output>
-	result: LanguageModelCompletionContext<Input, Output>
+	result: LanguageModelMiddlewareContext<Input, Output>
 	elapsed_ms: number
 }
 
@@ -29,7 +28,7 @@ const default_log = <
 	result,
 	elapsed_ms,
 }: LoggingEvent<Input, Output>): void => {
-	const usage = result.completion.usage
+	const usage = result.history.at(-1)?.[1].at(-1)?.usage
 
 	console.log(`llm:${context.description.name}`, {
 		elapsed_ms,
@@ -49,7 +48,7 @@ export const logging =
 	async (
 		context: LanguageModelMiddlewareContext<Input, Output>,
 		next: LanguageModelMiddlewareNext<Input, Output>,
-	): Promise<LanguageModelCompletionContext<Input, Output>> => {
+	) => {
 		const started_at = Date.now()
 		const result = await next(context)
 		const elapsed_ms = Date.now() - started_at

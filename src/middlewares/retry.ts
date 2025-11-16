@@ -1,7 +1,6 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
@@ -17,7 +16,7 @@ export const retry =
 	async (
 		context: LanguageModelMiddlewareContext<Input, Output>,
 		next: LanguageModelMiddlewareNext<Input, Output>,
-	): Promise<LanguageModelCompletionContext<Input, Output>> => {
+	) => {
 		let last: unknown
 		for (let i = 0; i < max; i++) {
 			try {

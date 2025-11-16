@@ -43,7 +43,7 @@ const chat_with_memory = describe(
 				"Keep replies concise but friendly.",
 			].join("\n"),
 		),
-		memory({store, max_messages: 30, key: ctx => ctx.input.session_id}),
+		memory({store, max_history: 30, key: ctx => ctx.input.session_id}),
 		timeout(15_000),
 		logging(),
 		retry(2),

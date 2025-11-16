@@ -21,8 +21,8 @@ export const react = <
 	const tools_by_name = new Map(tools.map(tool => [tool.name, tool]))
 
 	return async (context, next) => {
-		context.tools ??= []
-		context.tools.push(
+		context.description.tools ??= []
+		context.description.tools.push(
 			...tools.map(tool =>
 				zodFunction({
 					name: tool.name,
@@ -35,16 +35,17 @@ export const react = <
 		for (let i = 0; i < max_steps; i++) {
 			const output = await next(context)
 
-			const message = output.completion.choices[0]?.message
+			const message = output.history.at(-1)?.[1].at(-1)
+				?.choices[0]?.message
 			if (!message) {
 				return output
 			}
-			context.messages.push(message)
+			output.history.push([message, []])
 
 			if (!message.tool_calls) {
 				return output
 			}
-			const tool_outputs: OpenAI.ChatCompletionToolMessageParam[] =
+			const tool_outputs: OpenAI.Chat.Completions.ChatCompletionToolMessageParam[] =
 				await Promise.all(
 					message.tool_calls.map(async tool_call => {
 						if (tool_call.type !== "function") {
@@ -87,7 +88,15 @@ export const react = <
 					}),
 				)
 
-			context.messages.push(...tool_outputs)
+			output.history.push(
+				...tool_outputs.map(
+					t =>
+						[t, []] as [
+							OpenAI.Chat.Completions.ChatCompletionMessageParam,
+							OpenAI.Chat.Completions.ChatCompletion[],
+						],
+				),
+			)
 		}
 
 		throw new ReActMaxStepsReachedError(context)

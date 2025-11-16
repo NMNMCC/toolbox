@@ -24,12 +24,12 @@ validation via Zod, and a middleware pattern inspired by web frameworks.
 - [Installation](#installation)
 - [TypeScript Compatibility](#typescript-compatibility)
 - [The `describe` Function](#the-describe-function)
-    - [Describing Regular Functions](#describing-regular-functions)
-    - [Describing LLM-Powered Functions](#describing-llm-powered-functions)
+  - [Describing Regular Functions](#describing-regular-functions)
+  - [Describing LLM-Powered Functions](#describing-llm-powered-functions)
 - [Extending the Library](#extending-the-library)
-    - [Creating Custom Middleware](#creating-custom-middleware)
-    - [Middleware Interface](#middleware-interface)
-    - [Custom Middleware Examples](#custom-middleware-examples)
+  - [Creating Custom Middleware](#creating-custom-middleware)
+  - [Middleware Interface](#middleware-interface)
+  - [Custom Middleware Examples](#custom-middleware-examples)
 - [Built-in Components](#built-in-components)
 - [License](#license)
 
@@ -51,6 +51,26 @@ This library requires TypeScript 5.0+ with `strict` mode enabled.
 
 ## The `describe` Function
 
+## Migration Notes
+
+This release aligns the documentation with the current runtime and type
+definitions in the codebase. If you're upgrading from earlier versions, note the
+following changes:
+
+- `context.messages` -> `context.history`: The middleware context now exposes a
+  `history` property which is an array of tuples `[message, completions]`, where
+  `completions` is an array of OpenAI chat completions associated with the
+  message.
+- Finalizers now receive the full `LanguageModelMiddlewareContext` and return
+  the parsed output value (not the context object).
+- `memory` middleware options: `max_messages` was renamed to `max_history`.
+- For logging or middleware examples that need access to tokens/usage, use
+  `result.history` to extract the latest completion usage:
+
+```ts
+const usage = result.history.at(-1)?.[1].at(-1)?.usage;
+```
+
 The `describe` function is the core of the library. It has two forms:
 
 ### Describing Regular Functions
@@ -58,8 +78,8 @@ The `describe` function is the core of the library. It has two forms:
 Wrap any function with metadata for use as tools in ReAct agents:
 
 ```typescript
-import {z} from "zod"
-import {describe} from "@nmnmcc/toolbox"
+import { z } from "zod";
+import { describe } from "@nmnmcc/toolbox";
 
 const add_numbers = describe(
 	{
@@ -69,15 +89,15 @@ const add_numbers = describe(
 			a: z.number().describe("First addend"),
 			b: z.number().describe("Second addend"),
 		}),
-		output: z.object({sum: z.number().describe("Sum of both numbers")}),
+		output: z.object({ sum: z.number().describe("Sum of both numbers") }),
 	},
-	async ({a, b}) => {
-		return {sum: a + b}
+	async ({ a, b }) => {
+		return { sum: a + b };
 	},
-)
+);
 
-const result = await add_numbers({a: 1, b: 2})
-console.log(result.sum) // 3
+const result = await add_numbers({ a: 1, b: 2 });
+console.log(result.sum); // 3
 ```
 
 ### Describing LLM-Powered Functions
@@ -85,19 +105,19 @@ console.log(result.sum) // 3
 Create functions backed by language models with a middleware chain:
 
 ```typescript
-import {z} from "zod"
-import {describe} from "@nmnmcc/toolbox"
-import {initializer} from "@nmnmcc/toolbox/initializers/initializer"
-import {finalizer} from "@nmnmcc/toolbox/finalizers/finalizer"
-import {retry} from "@nmnmcc/toolbox/middlewares/retry"
-import {logging} from "@nmnmcc/toolbox/middlewares/logging"
+import { z } from "zod";
+import { describe } from "@nmnmcc/toolbox";
+import { initializer } from "@nmnmcc/toolbox/initializers/initializer";
+import { finalizer } from "@nmnmcc/toolbox/finalizers/finalizer";
+import { retry } from "@nmnmcc/toolbox/middlewares/retry";
+import { logging } from "@nmnmcc/toolbox/middlewares/logging";
 
 const summarize = describe(
 	{
 		name: "summarize",
 		description: "Summarize the provided text",
-		input: z.object({text: z.string().describe("Text to summarize")}),
-		output: z.object({summary: z.string().describe("A concise summary")}),
+		input: z.object({ text: z.string().describe("Text to summarize") }),
+		output: z.object({ summary: z.string().describe("A concise summary") }),
 		model: "gpt-4o",
 		temperature: 0.7,
 	},
@@ -109,41 +129,41 @@ const summarize = describe(
 		retry(2),
 		finalizer(),
 	],
-)
+);
 
-const result = await summarize({text: "Long article text goes here..."})
-console.log(result.summary)
+const result = await summarize({ text: "Long article text goes here..." });
+console.log(result.summary);
 ```
 
 **Type Signature:**
 
 ```typescript
 type Description<Input, Output> = {
-	name: string
-	description: string
-	input: Input // Zod schema
-	output: Output // Zod schema
-}
+	name: string;
+	description: string;
+	input: Input; // Zod schema
+	output: Output; // Zod schema
+};
 
 type LanguageModelDescription<Input, Output> = Description<Input, Output> & {
-	model: string // OpenAI model name
-	temperature?: number
-	max_tokens?: number
+	model: string; // OpenAI model name
+	temperature?: number;
+	max_tokens?: number;
 	// ... any OpenAI ChatCompletionCreateParams
-	client?: OpenAI // Optional custom OpenAI client
-}
+	client?: OpenAI; // Optional custom OpenAI client
+};
 
 // For regular functions
 function describe<Input, Output>(
 	description: Description<Input, Output>,
 	implementation: (input: z.input<Input>) => Promise<z.output<Output>>,
-): Described<Input, Output>
+): Described<Input, Output>;
 
 // For LLM-powered functions
 function describe<Input, Output>(
 	description: LanguageModelDescription<Input, Output>,
 	imports: [initializer, ...middlewares, finalizer],
-): Described<Input, Output>
+): Described<Input, Output>;
 ```
 
 ## Extending the Library
@@ -170,33 +190,34 @@ import type {
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
-	LanguageModelCompletionContext,
-} from "@nmnmcc/toolbox"
+	LanguageModelOutputContext,
+} from "@nmnmcc/toolbox";
 
 type LanguageModelMiddleware<Input, Output> = (
 	context: LanguageModelMiddlewareContext<Input, Output>,
 	next: LanguageModelMiddlewareNext<Input, Output>,
-) => Promise<LanguageModelCompletionContext<Input, Output>>
+) => Promise<LanguageModelMiddlewareContext<Input, Output>>;
 ```
 
 **Context Structure:**
 
 ```typescript
 type LanguageModelMiddlewareContext<Input, Output> = {
-	description: LanguageModelDescription<Input, Output>
-	initializer: LanguageModelInitializer<Input, Output>
-	middlewares: LanguageModelMiddleware<Input, Output>[]
-	finalizer: LanguageModelFinalizer<Input, Output>
-	usage: OpenAI.CompletionUsage
-	input: z.output<Input>
-	tools?: OpenAI.Chat.Completions.ChatCompletionFunctionTool[]
-	messages: OpenAI.ChatCompletionMessageParam[]
-}
-
-type LanguageModelCompletionContext<Input, Output> =
-	LanguageModelMiddlewareContext<Input, Output> & {
-		completion: OpenAI.Chat.Completions.ChatCompletion
-	}
+	description: LanguageModelDescription<Input, Output>;
+	initializer: LanguageModelInitializer<Input, Output>;
+	middlewares: LanguageModelMiddleware<Input, Output>[];
+	finalizer: LanguageModelFinalizer<Input, Output>;
+	usage: OpenAI.CompletionUsage;
+	input: z.output<Input>;
+	tools?: OpenAI.Chat.Completions.ChatCompletionFunctionTool[];
+	history: [
+		OpenAI.Chat.ChatCompletionMessageParam,
+		OpenAI.Chat.Completions.ChatCompletion[],
+	][];
+};
+type LanguageModelOutputContext<Input, Output> =
+	& LanguageModelMiddlewareContext<Input, Output>
+	& { output: z.output<Output> };
 ```
 
 ### Custom Middleware Examples
@@ -204,136 +225,138 @@ type LanguageModelCompletionContext<Input, Output> =
 #### Example 1: Simple Logging Middleware
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const simple_logger = <Input, Output>(): LanguageModelMiddleware<
 	Input,
 	Output
 > => {
 	return async (context, next) => {
-		console.log(`[${context.description.name}] Starting call`)
-		const start = Date.now()
+		console.log(`[${context.description.name}] Starting call`);
+		const start = Date.now();
 
-		const result = await next(context)
+		const result = await next(context);
 
-		const elapsed = Date.now() - start
-		console.log(`[${context.description.name}] Completed in ${elapsed}ms`)
+		const elapsed = Date.now() - start;
+		console.log(`[${context.description.name}] Completed in ${elapsed}ms`);
 
-		return result
-	}
-}
+		return result;
+	};
+};
 ```
 
 #### Example 2: Response Transformation Middleware
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const add_prefix = <Input, Output>(
 	prefix: string,
 ): LanguageModelMiddleware<Input, Output> => {
 	return async (context, next) => {
-		const result = await next(context)
+		const result = await next(context);
 
 		// Modify the response content
-		const message = result.completion.choices[0]?.message
+		const message = result.history.at(-1)?.[1].at(-1)?.choices[0]?.message;
 		if (message?.content) {
-			message.content = prefix + message.content
+			message.content = prefix + message.content;
 		}
 
-		return result
-	}
-}
+		return result;
+	};
+};
 ```
 
 #### Example 3: Caching Middleware
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const simple_cache = <Input, Output>(
 	store: Map<string, any>,
 ): LanguageModelMiddleware<Input, Output> => {
 	return async (context, next) => {
-		const cache_key = `${context.description.name}:${JSON.stringify(context.input)}`
+		const cache_key = `${context.description.name}:${
+			JSON.stringify(context.input)
+		}`;
 
 		// Check cache
-		const cached = store.get(cache_key)
+		const cached = store.get(cache_key);
 		if (cached) {
-			console.log("Cache hit!")
-			return cached
+			console.log("Cache hit!");
+			return cached;
 		}
 
 		// Call LLM and cache result
-		const result = await next(context)
-		store.set(cache_key, result)
+		const result = await next(context);
+		store.set(cache_key, result);
 
-		return result
-	}
-}
+		return result;
+	};
+};
 ```
 
 #### Example 4: Error Handling Middleware
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const error_handler = <Input, Output>(
 	on_error: (error: Error) => void,
 ): LanguageModelMiddleware<Input, Output> => {
 	return async (context, next) => {
 		try {
-			return await next(context)
+			return await next(context);
 		} catch (error) {
-			on_error(error as Error)
-			throw error
+			on_error(error as Error);
+			throw error;
 		}
-	}
-}
+	};
+};
 ```
 
 #### Example 5: Request Modification Middleware
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const add_context = <Input, Output>(
 	additional_context: string,
 ): LanguageModelMiddleware<Input, Output> => {
 	return async (context, next) => {
-		// Add additional context to messages
+		// Add additional context to history
 		const modified_context = {
 			...context,
-			messages: [
-				...context.messages,
-				{role: "system" as const, content: additional_context},
+			history: [
+				...context.history,
+				[{ role: "system" as const, content: additional_context }, []],
 			],
-		}
+		};
 
-		return await next(modified_context)
-	}
-}
+		return await next(modified_context);
+	};
+};
 ```
 
 #### Example 6: Composing Multiple Middlewares
 
 ```typescript
-import type {LanguageModelMiddleware} from "@nmnmcc/toolbox"
+import type { LanguageModelMiddleware } from "@nmnmcc/toolbox";
 
 const aggregator = <Input, Output>(
 	...middlewares: LanguageModelMiddleware<Input, Output>[]
 ): LanguageModelMiddleware<Input, Output> => {
 	return async (context, next) => {
 		const chain = middlewares.reduceRight(
-			(prev, curr) => ctx => curr(ctx, prev),
+			(prev, curr) => (ctx) => curr(ctx, prev),
 			next,
-		)
-		return chain(context)
-	}
-}
+		);
+		return chain(context);
+	};
+};
 
 // Usage
-const standard_middlewares = aggregator(logging(), retry(3), timeout(30000))
+const standard_middlewares = aggregator(logging(), retry(3), timeout(30000));
 ```
 
 ## Built-in Components
@@ -343,19 +366,19 @@ quickly. For detailed documentation, see:
 
 - **[Initializers](./initializers.md)** - Convert input into initial message
   arrays
-    - `initializer` - Standard initializer with system prompt
+  - `initializer` - Standard initializer with system prompt
 - **[Middlewares](./middlewares.md)** - Composable middleware for common
   patterns
-    - `cache` - Cache LLM responses
-    - `memory` - Maintain conversation history
-    - `retry` - Retry failed calls
-    - `logging` - Log execution metrics
-    - `timeout` - Add timeouts
-    - `react` - ReAct pattern for tool calling
-    - `otel` - OpenTelemetry tracing
-    - `aggregator` - Compose multiple middlewares
+  - `cache` - Cache LLM responses
+  - `memory` - Maintain conversation history
+  - `retry` - Retry failed calls
+  - `logging` - Log execution metrics
+  - `timeout` - Add timeouts
+  - `react` - ReAct pattern for tool calling
+  - `otel` - OpenTelemetry tracing
+  - `aggregator` - Compose multiple middlewares
 - **[Finalizers](./finalizers.md)** - Extract output from completions
-    - `finalizer` - Standard JSON parser
+  - `finalizer` - Standard JSON parser
 
 ## License
 

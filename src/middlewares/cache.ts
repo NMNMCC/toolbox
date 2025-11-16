@@ -1,7 +1,6 @@
 import type {
 	DescribableInput,
 	DescribableOutput,
-	LanguageModelCompletionContext,
 	LanguageModelMiddleware,
 	LanguageModelMiddlewareContext,
 	LanguageModelMiddlewareNext,
@@ -14,12 +13,12 @@ export type CacheStore<
 	get: (
 		key: string,
 	) =>
-		| LanguageModelCompletionContext<Input, Output>
+		| LanguageModelMiddlewareContext<Input, Output>
 		| undefined
-		| Promise<LanguageModelCompletionContext<Input, Output> | undefined>
+		| Promise<LanguageModelMiddlewareContext<Input, Output> | undefined>
 	set: (
 		key: string,
-		value: LanguageModelCompletionContext<Input, Output>,
+		value: LanguageModelMiddlewareContext<Input, Output>,
 	) => void | Promise<void>
 }
 
@@ -66,7 +65,7 @@ export const cache =
 	async (
 		context: LanguageModelMiddlewareContext<Input, Output>,
 		next: LanguageModelMiddlewareNext<Input, Output>,
-	): Promise<LanguageModelCompletionContext<Input, Output>> => {
+	) => {
 		const cache_key = key(context)
 		const cached = await store.get(cache_key)
 		if (cached) {
