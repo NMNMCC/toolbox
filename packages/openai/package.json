@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "name": "@pipechain/openai",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "openai": "^6.9.1"
+  }
+}
