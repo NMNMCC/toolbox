@@ -6,7 +6,7 @@
  *
  * @module chain
  */
-import type {Async, InferIOIn, IO, Promisable} from "./util.ts"
+import type {Async, IO, Promisable} from "./util.ts"
 
 /**
  * A chainable IO function for one-way data flow.
@@ -15,28 +15,22 @@ import type {Async, InferIOIn, IO, Promisable} from "./util.ts"
  * input -> pipe_n -> ... -> pipe_1 -> core -> output
  * ```
  */
-export type Simplex<F extends IO<any, any>> = F & {
+export type Simplex<In, Out> = Async<In, Out> & {
 	/**
 	 * Prepends a processing step.
 	 * @param step The function to execute before the current pipeline.
 	 */
-	pipe: <NF extends IO<any, InferIOIn<F>>>(step: NF) => Simplex<NF>
+	pipe: <NewIn>(step: IO<NewIn, In>) => Simplex<NewIn, Out>
 }
 
 /**
  * Creates a Simplex pipeline.
- * @param func The core IO function.
+ * @param core The core IO function.
  */
-export const simplex = <F extends IO<any, any>>(func: F): Simplex<F> =>
-	Object.assign(func, {
-		pipe: <NF extends IO<any, InferIOIn<F>>>(step: NF): Simplex<NF> =>
-			simplex(((...inputs: never[]) => {
-				const intermediate = (step as Function)(...inputs)
-				if (intermediate instanceof Promise) {
-					return intermediate.then(func)
-				}
-				return func(intermediate)
-			}) as never),
+export const simplex = <In, Out>(core: IO<In, Out>): Simplex<In, Out> =>
+	Object.assign(async (i: In) => core(i), {
+		pipe: <NewIn>(step: IO<NewIn, NoInfer<In>>): Simplex<NewIn, Out> =>
+			simplex(async input => core(await step(input))),
 	})
 
 /**

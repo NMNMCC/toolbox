@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@pipechain/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "LGPL-2.1-or-later",
   "packageManager": "pnpm@10.15.0",
   "main": "./dist/mod.mjs",
