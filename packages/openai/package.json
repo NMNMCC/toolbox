@@ -1,13 +1,15 @@
 {
   "type": "module",
   "name": "@pipechain/openai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "LGPL-2.1-or-later",
   "packageManager": "pnpm@10.15.0",
   "dependencies": {
-    "@pipechain/core": "workspace:^",
-    "openai": "^6.9.1",
-    "zod": "^4.1.12"
+    "@pipechain/core": "workspace:^"
+  },
+  "peerDependencies": {
+    "openai": "6",
+    "zod": "4"
   },
   "main": "./dist/mod.mjs",
   "module": "./dist/mod.mjs",

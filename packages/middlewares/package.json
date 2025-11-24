@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@pipechain/middlewares",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "LGPL-2.1-or-later",
   "packageManager": "pnpm@10.15.0",
   "dependencies": {
