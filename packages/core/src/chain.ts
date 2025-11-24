@@ -1,34 +1,98 @@
-import type {Promisable} from "./util.ts"
+/**
+ * This module provides utilities for creating chainable function pipelines.
+ * It supports two main patterns:
+ * - `Simplex`: A one-way data flow pipeline where steps are executed sequentially.
+ * - `Duplex`: A middleware-style pipeline where wrappers can execute logic before and after the core function.
+ *
+ * @module chain
+ */
+import type {Async, InferIOIn, IO, Promisable} from "./util.ts"
 
-export type Node<I extends any[], O> = (...inputs: I) => Promisable<O>
-export type DependencyIn<D extends Node<any, any>[]> = {
-	[K in keyof D]: D[K] extends Node<infer In, any> ? In : never
+/**
+ * A chainable IO function for one-way data flow.
+ *
+ * ```
+ * input -> pipe_n -> ... -> pipe_1 -> core -> output
+ * ```
+ */
+export type Simplex<F extends IO<any, any>> = F & {
+	/**
+	 * Prepends a processing step.
+	 * @param step The function to execute before the current pipeline.
+	 */
+	pipe: <NF extends IO<any, InferIOIn<F>>>(step: NF) => Simplex<NF>
 }
-export type DependencyOut<D extends Node<any, any>[]> = {
-	[K in keyof D]: D[K] extends Node<any, infer Out> ? Out : never
-}
 
-export const chain =
-	<const D extends Node<any, any>[], O>(
-		dependencies: D,
-		func: Node<DependencyOut<D>, O>,
-	): Node<DependencyIn<D>, O> =>
-	(...inputs) => {
-		const results = dependencies.map((dep, i) => dep(...inputs[i]))
+/**
+ * Creates a Simplex pipeline.
+ * @param func The core IO function.
+ */
+export const simplex = <F extends IO<any, any>>(func: F): Simplex<F> =>
+	Object.assign(func, {
+		pipe: <NF extends IO<any, InferIOIn<F>>>(step: NF): Simplex<NF> =>
+			simplex(((...inputs: never[]) => {
+				const intermediate = (step as Function)(...inputs)
+				if (intermediate instanceof Promise) {
+					return intermediate.then(func)
+				}
+				return func(intermediate)
+			}) as never),
+	})
 
-		if (results.some(res => res instanceof Promise)) {
-			return Promise.all(results).then(resolved =>
-				func(...(resolved as DependencyOut<D>)),
-			)
-		}
-
-		return func(...(results as DependencyOut<D>))
+/**
+ * A chainable IO function for middleware pipelines.
+ *
+ * ```
+ * input -> pipe_n -> ... -> core -> ... -> pipe_n -> output
+ * ```
+ */
+export type Duplex<In, Out> = Async<In, Out> & {
+	/**
+	 * Wraps the pipeline with a middleware.
+	 * @param middleware The middleware to execute around the current pipeline.
+	 */
+	pipe: {
+		<NewIn = In, NewOut = Out>(
+			middleware: Middleware<NewIn, NewOut, In, Out>,
+		): Duplex<NewIn, NewOut>
 	}
+}
 
-if (import.meta.main) {
-	const add = (a: number, b: number) => a + b
-	const multiply = (x: number) => x * 3
-	const combine = chain([add, multiply], (sum, product) => sum + product)
+/**
+ * A middleware function that wraps execution.
+ */
+export type Middleware<In, Out, NextIn = In, NextOut = Out> = (
+	input: In,
+	next: IO<NextIn, NextOut>,
+) => Promisable<Out>
 
-	console.log(combine([2, 3], [4]))
+export type InferMiddlewareIn<M> =
+	M extends Middleware<infer In, any, any, any> ? In : never
+export type InferMiddlewareOut<M> =
+	M extends Middleware<any, infer Out, any, any> ? Out : never
+export type InferMiddleNextIn<M> =
+	M extends Middleware<any, any, infer NextIn, any> ? NextIn : never
+export type InferMiddleNextOut<M> =
+	M extends Middleware<any, any, any, infer NextOut> ? NextOut : never
+
+/**
+ * Creates a Duplex pipeline.
+ * @param core The core IO function.
+ * @param middlewares Optional initial middlewares (LIFO).
+ */
+export const duplex = <In, Out>(
+	core: IO<In, Out>,
+	...middlewares: NoInfer<Middleware<In, Out>[]>
+): Duplex<In, Out> => {
+	const pipeline = middlewares.reduce<IO<In, Out>>(
+		(prev, curr) => input => curr(input, prev),
+		core,
+	)
+
+	return Object.assign(async (i: In) => pipeline(i), {
+		pipe: <NewIn = In, NewOut = Out>(
+			middleware: Middleware<NewIn, NewOut, In, Out>,
+		): Duplex<NewIn, NewOut> =>
+			duplex(input => middleware(input, pipeline)),
+	})
 }

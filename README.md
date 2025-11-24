@@ -380,6 +380,21 @@ quickly. For detailed documentation, see:
 - **[Finalizers](./finalizers.md)** - Extract output from completions
   - `finalizer` - Standard JSON parser
 
+## Build & release
+
+This repo is wired up as a turborepo that runs `tsdown` builds and `tsc` checks
+per package.
+
+- `pnpm run build` runs `turbo run tsdown`, which sequentially executes each
+  package's `tsdown --filter packages/<name>` script. The shared
+  `tsdown.config.ts` ensures a consistent Node 18 target, declaration
+  generation, and `dist` output for every package.
+- `pnpm run typecheck` runs `turbo run check`, which invokes `tsc --noEmit`
+  inside every package.
+- Each package publishes the contents of `dist`. After building, you can publish
+  individual packages with standard `pnpm --filter <name> publish` commands (or
+  whatever release flow you prefer).
+
 ## License
 
 LGPL-2.1-or-later

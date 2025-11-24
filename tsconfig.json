@@ -5,8 +5,8 @@
 
 		"module": "nodenext",
 		"target": "esnext",
-		"types": [],
-
+		"baseUrl": ".",
+		"composite": true,
 		"allowImportingTsExtensions": true,
 
 		"noUncheckedIndexedAccess": true,

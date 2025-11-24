@@ -1,52 +1,21 @@
 {
 	"type": "module",
-	"name": "@nmnmcc/toolbox",
-	"version": "0.5.0",
-	"description": "Composable middleware for structured LLM calls with TypeScript",
+	"name": "@pipechain/workspace",
 	"scripts": {
-		"build": "tsup ./src/mod.ts ./src/util.ts ./src/initializers/*.ts ./src/middlewares/*.ts ./src/finalizers/*.ts --format esm --dts --clean",
-		"check": "tsc",
+		"build": "turbo run tsdown",
+		"typecheck": "turbo run check",
 		"format": "prettier -w ./**"
 	},
-	"exports": {
-		".": {
-			"types": "./dist/mod.d.ts",
-			"import": "./dist/mod.js"
-		},
-		"./initializers/*": {
-			"types": "./dist/initializers/*.d.ts",
-			"import": "./dist/initializers/*.js"
-		},
-		"./middlewares/*": {
-			"types": "./dist/middlewares/*.d.ts",
-			"import": "./dist/middlewares/*.js"
-		},
-		"./finalizers/*": {
-			"types": "./dist/finalizers/*.d.ts",
-			"import": "./dist/finalizers/*.js"
-		},
-		"./util": {
-			"types": "./dist/util.d.ts",
-			"import": "./dist/util.js"
-		}
-	},
-	"files": [
-		"./examples",
-		"./src",
-		"./dist",
-		"./README.md"
-	],
 	"license": "LGPL-2.1-or-later",
 	"packageManager": "pnpm@10.15.0",
-	"peerDependencies": {
-		"openai": "^6",
-		"zod": "^4"
-	},
 	"devDependencies": {
+		"@moonrepo/cli": "^1.41.7",
 		"@types/node": "^24.10.1",
 		"prettier": "^3.6.2",
+		"tsdown": "^0.16.6",
 		"tsup": "^8.5.1",
 		"tsx": "^4.20.6",
+		"turbo": "^2.6.1",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.8"
 	},

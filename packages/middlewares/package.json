@@ -1,9 +1,12 @@
 {
   "type": "module",
-  "name": "@pipechain/core",
+  "name": "@pipechain/middlewares",
   "version": "1.0.0",
   "license": "LGPL-2.1-or-later",
   "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "@pipechain/core": "workspace:^"
+  },
   "main": "./dist/mod.mjs",
   "module": "./dist/mod.mjs",
   "types": "./dist/mod.d.mts",
@@ -15,7 +18,7 @@
     "dist"
   ],
   "scripts": {
-    "tsdown": "tsdown --config ../../tsdown.config.ts --filter packages/core",
+    "tsdown": "tsdown --config ../../tsdown.config.ts --filter packages/middlewares",
     "check": "tsc --noEmit --project ../../tsconfig.json"
   }
 }

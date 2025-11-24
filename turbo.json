@@ -1,0 +1,13 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"tsdown": {
+			"dependsOn": ["^tsdown"],
+			"outputs": ["dist/**"]
+		},
+		"check": {
+			"dependsOn": ["^check"],
+			"outputs": []
+		}
+	}
+}
